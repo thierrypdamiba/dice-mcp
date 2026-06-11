@@ -74,6 +74,18 @@ specification.
 
 Please open a GitHub issue on this repository for bugs or feature requests.
 
+## Filming / ToolBench demo
+
+Piece 2 of the Arcade build-essentials series. See [`docs/FILMING.md`](./docs/FILMING.md) for the
+run-of-show. Reset to known states:
+
+```bash
+./scripts/rehearse-reset.sh scaffold   # untouched arcade new dice (F/D)
+./scripts/rehearse-reset.sh improved   # reference B state
+```
+
+Tags: `baseline/scaffold`, `improved/b`.
+
 ## License
 
 [MIT](./LICENSE)
