@@ -1,94 +1,61 @@
-#!/usr/bin/env python3
-"""dice MCP server"""
+"""dice MCP server — roll dice with uniform, independent results."""
 
-import sys
+import random
 from typing import Annotated
 
-import httpx
-from arcade_mcp_server import Context, MCPApp
-from arcade_mcp_server.auth import GitHub
-from arcade_mcp_server.metadata import (
-    Behavior,
-    Classification,
-    Operation,
-    ServiceDomain,
-    ToolMetadata,
-)
+from arcade_mcp_server import MCPApp
 
-app = MCPApp(name="dice", version="1.0.0", log_level="DEBUG")
+app = MCPApp(name="dice", version="1.0.0")
 
 
 @app.tool
-def greet(name: Annotated[str, "The name of the person to greet"]) -> str:
-    """Greet a person by name."""
-    return f"Hello, {name}!"
+def roll_dice(
+    count: Annotated[
+        int,
+        "How many dice to roll. Integer from 1 to 100. Example: 3 rolls three dice.",
+    ],
+    sides: Annotated[
+        int,
+        "Number of sides on each die. Integer from 2 to 1000. "
+        "Example: 6 for a standard d6, 20 for a d20.",
+    ],
+) -> dict:
+    """Roll `count` dice that each have `sides` sides and return every roll plus the total.
+
+    Use this whenever a user wants to roll dice, resolve a tabletop roll such as
+    "3d6" or "roll two d20", or draw uniform random integers in a fixed range. Each
+    die is independent and uniform over 1..sides.
+
+    Args:
+        count: Number of dice to roll (1-100).
+        sides: Number of faces on each die (2-1000).
+
+    Returns:
+        A JSON object:
+            {
+              "rolls": list[int],  # one result per die, length == count, each in 1..sides
+              "total": int,        # sum of all rolls
+              "count": int,        # the count that was used
+              "sides": int         # the sides that was used
+            }
+
+    Example:
+        roll_dice(count=3, sides=6)
+        -> {"rolls": [4, 2, 6], "total": 12, "count": 3, "sides": 6}
+
+    Raises:
+        ValueError: if `count` is not in 1..100 or `sides` is not in 2..1000.
+    """
+    if not 1 <= count <= 100:
+        raise ValueError(f"count must be between 1 and 100, got {count}")
+    if not 2 <= sides <= 1000:
+        raise ValueError(f"sides must be between 2 and 1000, got {sides}")
+
+    rolls = [random.randint(1, sides) for _ in range(count)]
+    return {"rolls": rolls, "total": sum(rolls), "count": count, "sides": sides}
 
 
-# To use this tool locally, you need to either set the secret in the .env file or as an environment variable
-@app.tool(requires_secrets=["MY_SECRET_KEY"])
-def whisper_secret(context: Context) -> Annotated[str, "The last 4 characters of the secret"]:
-    """Reveal the last 4 characters of a secret"""
-    # Secrets are injected into the context at runtime.
-    # LLMs and MCP clients cannot see or access your secrets
-    # You can define secrets in a .env file.
-    try:
-        secret = context.get_secret("MY_SECRET_KEY")
-    except Exception as e:
-        return str(e)
-
-    return "The last 4 characters of the secret are: " + secret[-4:]
-
-
-# To use this tool locally, you need to install the Arcade CLI (uv tool install arcade-mcp)
-# and then run 'arcade login' to authenticate.
-@app.tool(
-    requires_auth=GitHub(),
-    metadata=ToolMetadata(
-        classification=Classification(
-            service_domains=[ServiceDomain.SOURCE_CODE],
-        ),
-        behavior=Behavior(
-            operations=[Operation.UPDATE],
-            read_only=False,
-            destructive=False,
-            idempotent=True,
-            open_world=True,
-        ),
-    ),
-)
-async def star_repo(
-    context: Context,
-    owner: Annotated[str, "GitHub owner (user or org). E.g. 'ArcadeAI'"],
-    repo: Annotated[str, "GitHub repository name. E.g. 'arcade-mcp'"],
-) -> Annotated[str, "Confirmation that the repository was starred"]:
-    """Star a public GitHub repository on behalf of the authenticated user."""
-    # OAuth token is injected into the context at runtime.
-    # LLMs and MCP clients cannot see or access your OAuth tokens.
-    oauth_token = context.get_auth_token_or_empty()
-    headers = {
-        "Authorization": f"Bearer {oauth_token}",
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "dice-mcp-server",
-    }
-    url = f"https://api.github.com/user/starred/{owner}/{repo}"
-
-    async with httpx.AsyncClient() as client:
-        response = await client.put(url, headers=headers)
-        response.raise_for_status()
-
-    return f"Starred {owner}/{repo}."
-
-
-# Run with specific transport
 if __name__ == "__main__":
-    # Get transport from command line argument, default to "stdio"
-    # - "stdio" (default): Standard I/O for Claude Desktop, CLI tools, etc.
-    #   Supports tools that require_auth or require_secrets out-of-the-box
-    # - "http": HTTPS streaming for Cursor, VS Code, etc.
-    #   Does not support tools that require_auth or require_secrets unless the server is deployed
-    #   using 'arcade deploy' or added in the Arcade Developer Dashboard with 'Arcade' server type
-    transport = sys.argv[1] if len(sys.argv) > 1 else "stdio"
-
-    # Run the server
-    app.run(transport=transport, host="127.0.0.1", port=8000)
+    # Streamable HTTP is the primary transport: remotely reachable by hosted MCP
+    # clients and fully protocol-compliant. Use stdio only for local CLI testing.
+    app.run(transport="http", host="0.0.0.0", port=8000)

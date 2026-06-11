@@ -1,11 +1,10 @@
 [project]
 name = "dice"
-version = "0.1.0"
-description = "MCP Server created with Arcade.dev"
+version = "1.0.0"
+description = "A minimal, well-typed dice-rolling MCP server (roll_dice) for AI agents."
 requires-python = ">=3.10"
 dependencies = [
     "arcade-mcp-server>=1.17.0,<2.0.0",
-    "httpx>=0.28.0,<1.0.0",
 ]
 
 [project.optional-dependencies]
@@ -17,9 +16,9 @@ dev = [
     "ruff>=0.1.0",
 ]
 
-# Tell Arcade.dev that this package has Arcade tools
+# Tell Arcade.dev that this package exposes Arcade tools.
 [project.entry-points.arcade_toolkits]
-toolkit_name = "dice"
+dice = "dice"
 
 [build-system]
 requires = ["hatchling"]
