@@ -4,11 +4,22 @@ import random
 from typing import Annotated
 
 from arcade_mcp_server import MCPApp
+from arcade_mcp_server.metadata import Behavior, Operation, ToolMetadata
 
 app = MCPApp(name="dice", version="1.0.0")
 
 
-@app.tool
+@app.tool(
+    metadata=ToolMetadata(
+        behavior=Behavior(
+            operations=[Operation.READ],
+            read_only=True,
+            destructive=False,
+            idempotent=False,
+            open_world=False,
+        ),
+    ),
+)
 def roll_dice(
     count: Annotated[
         int,

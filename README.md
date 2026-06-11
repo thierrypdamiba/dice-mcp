@@ -62,6 +62,18 @@ roll_dice(count=3, sides=6)
 
 Out-of-range inputs raise a `ValueError` with a clear message (e.g. `count` must be 1–100).
 
+## MCP compliance
+
+`dice` is a standard MCP server built on `arcade-mcp-server`. It exposes the **Tools**
+capability over **Streamable HTTP**, follows MCP `initialize` / `tools/list` / `tools/call`
+semantics, and annotates `roll_dice` with behavior hints (read-only, non-destructive,
+non-idempotent — each roll is random). A Tools-only server is fully MCP-compliant per the
+specification.
+
+## Support
+
+Please open a GitHub issue on this repository for bugs or feature requests.
+
 ## License
 
 [MIT](./LICENSE)
